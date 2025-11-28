@@ -96,7 +96,7 @@ export default function IPDDetailPage() {
         }),
       ]);
 
-      if (admissionRes.success && admissionRes.data?.length > 0) {
+      if (admissionRes.success && admissionRes.data && admissionRes.data.length > 0) {
         setAdmission(admissionRes.data[0]);
       }
       if (recordsRes.success && Array.isArray(recordsRes.data)) {

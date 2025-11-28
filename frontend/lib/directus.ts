@@ -1,4 +1,4 @@
-import { createDirectus, authentication, rest, readMe, readItems, createItem, updateItem, deleteItem, createUser, AuthenticationData } from '@directus/sdk';
+import { createDirectus, authentication, rest, readMe, readItem, readItems, createItem, updateItem, deleteItem, createUser, AuthenticationData } from '@directus/sdk';
 
 // Type definitions for our collections
 export interface Organization {
@@ -502,6 +502,16 @@ export async function getCurrentUser() {
 }
 
 // Generic CRUD functions
+export async function getItem<T>(collection: keyof Schema, id: string, options?: object) {
+  try {
+    const item = await directus.request(readItem(collection, id, options as never));
+    return { success: true, data: item as T };
+  } catch (error: unknown) {
+    const err = error as Error;
+    return { success: false, error: err.message };
+  }
+}
+
 export async function getItems<T>(collection: keyof Schema, options?: object) {
   try {
     const items = await directus.request(readItems(collection, options as never));

@@ -205,7 +205,7 @@ export default function PatientDetailPage() {
               </div>
               <div>
                 <p className="text-sm text-gray-500">Age</p>
-                <p className="font-medium">{calculateAge(patient.date_of_birth)}</p>
+                <p className="font-medium">{calculateAge(patient.date_of_birth || '')}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">Blood Group</p>

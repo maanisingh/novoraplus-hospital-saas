@@ -141,27 +141,27 @@ const PRICING_PLANS = [
 export default function HomePage() {
   const router = useRouter();
   const { isAuthenticated, isLoading, checkAuth, user } = useAuthStore();
-  const [showLanding, setShowLanding] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
+    // Check auth on mount (silently in background)
     checkAuth();
   }, [checkAuth]);
 
   useEffect(() => {
-    if (!isLoading) {
-      if (isAuthenticated) {
-        if (isSuperAdmin(user)) {
-          router.push('/superadmin');
-        } else {
-          router.push('/dashboard');
-        }
+    // Only redirect if authenticated after mount
+    if (mounted && isAuthenticated && !isLoading) {
+      if (isSuperAdmin(user)) {
+        router.push('/superadmin');
       } else {
-        setShowLanding(true);
+        router.push('/dashboard');
       }
     }
-  }, [isLoading, isAuthenticated, user, router]);
+  }, [mounted, isLoading, isAuthenticated, user, router]);
 
-  if (!showLanding) {
+  // Show loading only briefly during initial hydration
+  if (!mounted) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="flex flex-col items-center space-y-4">
