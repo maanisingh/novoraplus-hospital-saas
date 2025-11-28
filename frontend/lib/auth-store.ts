@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import { login, logout, getCurrentUser, DirectusUser } from './directus';
 
 interface AuthState {
@@ -13,75 +12,73 @@ interface AuthState {
   clearError: () => void;
 }
 
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set) => ({
-      user: null,
-      isLoading: false,
-      isAuthenticated: false,
-      error: null,
+// No persist - always verify with server on page load
+export const useAuthStore = create<AuthState>()((set) => ({
+  user: null,
+  isLoading: false,
+  isAuthenticated: false,
+  error: null,
 
-      login: async (email: string, password: string) => {
-        set({ isLoading: true, error: null });
-        const result = await login(email, password);
+  login: async (email: string, password: string) => {
+    set({ isLoading: true, error: null });
+    const result = await login(email, password);
 
-        if (result.success) {
-          const userResult = await getCurrentUser();
-          if (userResult.success && userResult.data) {
-            set({
-              user: userResult.data as DirectusUser,
-              isAuthenticated: true,
-              isLoading: false
-            });
-            return true;
-          }
-        }
-
+    if (result.success) {
+      const userResult = await getCurrentUser();
+      if (userResult.success && userResult.data) {
         set({
-          error: result.error || 'Login failed',
+          user: userResult.data as DirectusUser,
+          isAuthenticated: true,
           isLoading: false
         });
-        return false;
-      },
-
-      logout: async () => {
-        set({ isLoading: true });
-        await logout();
-        set({
-          user: null,
-          isAuthenticated: false,
-          isLoading: false,
-          error: null
-        });
-      },
-
-      checkAuth: async () => {
-        set({ isLoading: true });
-        const result = await getCurrentUser();
-
-        if (result.success && result.data) {
-          set({
-            user: result.data as DirectusUser,
-            isAuthenticated: true,
-            isLoading: false
-          });
-        } else {
-          set({
-            user: null,
-            isAuthenticated: false,
-            isLoading: false
-          });
-        }
-      },
-
-      clearError: () => set({ error: null }),
-    }),
-    {
-      name: 'hospital-auth',
-      partialize: (state) => ({ isAuthenticated: state.isAuthenticated }),
+        return true;
+      }
     }
-  )
-);
+
+    set({
+      error: result.error || 'Login failed',
+      isLoading: false
+    });
+    return false;
+  },
+
+  logout: async () => {
+    set({ isLoading: true });
+    await logout();
+    // Clear any stored tokens
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('directus_token');
+      localStorage.removeItem('hospital-auth');
+    }
+    set({
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+      error: null
+    });
+  },
+
+  checkAuth: async () => {
+    set({ isLoading: true });
+    const result = await getCurrentUser();
+
+    if (result.success && result.data) {
+      set({
+        user: result.data as DirectusUser,
+        isAuthenticated: true,
+        isLoading: false
+      });
+    } else {
+      set({
+        user: null,
+        isAuthenticated: false,
+        isLoading: false
+      });
+    }
+  },
+
+  clearError: () => set({ error: null }),
+}));
 
 // Helper to get role name from user
 export function getUserRole(user: DirectusUser | null): string {
