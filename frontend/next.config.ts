@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: 'standalone',
   images: {
     remotePatterns: [
       {
@@ -11,6 +12,11 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'hospital-api.alexandratechlab.com',
+        pathname: '/assets/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.railway.app',
         pathname: '/assets/**',
       },
     ],
