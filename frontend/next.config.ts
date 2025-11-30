@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: 'standalone',
   images: {
     remotePatterns: [
       {
@@ -19,14 +18,12 @@ const nextConfig: NextConfig = {
         hostname: '*.railway.app',
         pathname: '/assets/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'directus-production-0b20.up.railway.app',
+        pathname: '/assets/**',
+      },
     ],
-  },
-  // Force revalidation of pages
-  experimental: {
-    staleTimes: {
-      dynamic: 0,
-      static: 0,
-    },
   },
   // Add cache-control headers
   async headers() {
