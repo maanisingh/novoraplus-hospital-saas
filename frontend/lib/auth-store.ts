@@ -12,9 +12,11 @@ interface AuthState {
   clearError: () => void;
 }
 
-// No persist - always verify with server on page load
-// CRITICAL: isLoading starts as TRUE to prevent premature redirect before checkAuth completes
-export const useAuthStore = create<AuthState>()((set) => ({
+// BULLETPROOF AUTH STORE
+// - isLoading starts TRUE to prevent redirect race
+// - No persist, always verify with server
+// - Uses nuclear clear on logout
+export const useAuthStore = create<AuthState>()((set, get) => ({
   user: null,
   isLoading: true,  // Start as true to prevent redirect race condition
   isAuthenticated: false,
@@ -22,26 +24,32 @@ export const useAuthStore = create<AuthState>()((set) => ({
 
   login: async (email: string, password: string) => {
     console.log('[AUTH STORE] login() called for:', email);
-    set({ isLoading: true, error: null });
+
+    // Clear any existing state FIRST
+    set({
+      user: null,
+      isAuthenticated: false,
+      isLoading: true,
+      error: null
+    });
+
     const result = await login(email, password);
 
-    if (result.success) {
-      console.log('[AUTH STORE] login() success, getting user...');
-      const userResult = await getCurrentUser();
-      console.log('[AUTH STORE] getCurrentUser result:', userResult.success, userResult.data?.email);
-      if (userResult.success && userResult.data) {
-        set({
-          user: userResult.data as DirectusUser,
-          isAuthenticated: true,
-          isLoading: false
-        });
-        console.log('[AUTH STORE] User set in store:', userResult.data.email, 'role:', (userResult.data as DirectusUser).role);
-        return true;
-      }
+    if (result.success && result.user) {
+      // Login now returns user data directly - use it!
+      console.log('[AUTH STORE] login() success, user:', result.user.email, 'role:', result.user.role?.name);
+      set({
+        user: result.user as DirectusUser,
+        isAuthenticated: true,
+        isLoading: false
+      });
+      return true;
     }
 
     console.log('[AUTH STORE] login failed:', result.error);
     set({
+      user: null,
+      isAuthenticated: false,
       error: result.error || 'Login failed',
       isLoading: false
     });
@@ -49,27 +57,20 @@ export const useAuthStore = create<AuthState>()((set) => ({
   },
 
   logout: async () => {
-    set({ isLoading: true });
-    // Clear local state first
+    console.log('[AUTH STORE] logout() called');
+
+    // Clear Zustand state IMMEDIATELY
     set({
       user: null,
       isAuthenticated: false,
       isLoading: false,
       error: null
     });
-    // Clear any stored tokens
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('directus-auth');
-      localStorage.removeItem('directus_token');
-      localStorage.removeItem('hospital-auth');
-      // Also clear all storage
-      localStorage.clear();
-      sessionStorage.clear();
-    }
-    // Call logout to invalidate server-side token
+
+    // Call logout which does nuclear clear
     await logout();
-    // CRITICAL: Force a hard page reload to completely reset JS state
-    // This ensures the Directus SDK singleton is completely reset
+
+    // CRITICAL: Force hard page reload to reset ALL JS state
     if (typeof window !== 'undefined') {
       window.location.href = '/login';
     }
@@ -78,10 +79,11 @@ export const useAuthStore = create<AuthState>()((set) => ({
   checkAuth: async () => {
     console.log('[AUTH STORE] checkAuth() called');
     set({ isLoading: true });
+
     const result = await getCurrentUser();
 
     if (result.success && result.data) {
-      console.log('[AUTH STORE] checkAuth success, user:', result.data.email, 'role:', (result.data as DirectusUser).role);
+      console.log('[AUTH STORE] checkAuth success:', result.data.email, 'role:', (result.data as DirectusUser).role);
       set({
         user: result.data as DirectusUser,
         isAuthenticated: true,
@@ -133,3 +135,5 @@ export function isStaff(user: DirectusUser | null): boolean {
   const staffRoles = ['Doctor', 'Nurse', 'Receptionist', 'Lab Technician', 'Pharmacist'];
   return staffRoles.includes(roleName) && user.org_id !== null;
 }
+
+// Build: 20251130-v3 - Sync with bulletproof directus.ts auth

@@ -443,52 +443,257 @@ interface Schema {
 
 const DIRECTUS_URL = process.env.NEXT_PUBLIC_DIRECTUS_URL || 'https://directus-production-0b20.up.railway.app';
 
-// Storage for auth tokens (browser-side)
+// ============================================================================
+// BULLETPROOF AUTH SYSTEM - No SDK caching, pure fetch-based
+// ============================================================================
+
+const AUTH_STORAGE_KEY = 'novoraplus_auth_session';
+
+interface AuthSession {
+  access_token: string;
+  refresh_token: string;
+  expires: number;
+  expires_at: number;
+  user_id: string;  // Track which user this session belongs to
+}
+
+// Get current auth session
+function getAuthSession(): AuthSession | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const data = localStorage.getItem(AUTH_STORAGE_KEY);
+    if (!data) return null;
+    return JSON.parse(data) as AuthSession;
+  } catch {
+    return null;
+  }
+}
+
+// Set auth session
+function setAuthSession(session: AuthSession | null): void {
+  if (typeof window === 'undefined') return;
+  if (session) {
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+  } else {
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+  }
+}
+
+// NUCLEAR CLEAR - removes everything auth related
+function nuclearClear(): void {
+  if (typeof window === 'undefined') return;
+
+  // Remove our auth key
+  localStorage.removeItem(AUTH_STORAGE_KEY);
+
+  // Remove legacy keys
+  localStorage.removeItem('directus-auth');
+  localStorage.removeItem('directus_token');
+  localStorage.removeItem('hospital-auth');
+
+  // Clear ALL localStorage items that might contain auth data
+  const keysToRemove: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && (key.includes('auth') || key.includes('token') || key.includes('directus') || key.includes('session'))) {
+      keysToRemove.push(key);
+    }
+  }
+  keysToRemove.forEach(key => localStorage.removeItem(key));
+
+  // Clear sessionStorage too
+  sessionStorage.clear();
+}
+
+// ============================================================================
+// AUTH FUNCTIONS - Pure fetch, no SDK
+// ============================================================================
+
+export async function login(email: string, password: string) {
+  try {
+    console.log('[AUTH] Login attempt for:', email);
+
+    // STEP 1: Nuclear clear before login
+    nuclearClear();
+    console.log('[AUTH] Cleared all auth state');
+
+    // STEP 2: Make login request
+    const response = await fetch(`${DIRECTUS_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+      cache: 'no-store',
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.log('[AUTH] Login failed:', errorData);
+      return { success: false, error: errorData.errors?.[0]?.message || 'Login failed' };
+    }
+
+    const data = await response.json();
+    console.log('[AUTH] Login successful');
+
+    // STEP 3: Immediately get user info to verify and get user_id
+    const userResponse = await fetch(`${DIRECTUS_URL}/users/me?fields=id,email,first_name,last_name,role.id,role.name,org_id,avatar,status`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${data.data.access_token}`,
+        'Content-Type': 'application/json',
+      },
+      cache: 'no-store',
+    });
+
+    if (!userResponse.ok) {
+      console.log('[AUTH] Failed to get user info after login');
+      return { success: false, error: 'Failed to verify user' };
+    }
+
+    const userData = await userResponse.json();
+    console.log('[AUTH] Verified user:', userData.data?.email, 'role:', userData.data?.role?.name);
+
+    // STEP 4: Store session with user_id for verification
+    const session: AuthSession = {
+      access_token: data.data.access_token,
+      refresh_token: data.data.refresh_token,
+      expires: data.data.expires,
+      expires_at: Date.now() + data.data.expires,
+      user_id: userData.data.id,
+    };
+    setAuthSession(session);
+    console.log('[AUTH] Session stored for user:', userData.data.email);
+
+    return { success: true, data: data.data, user: userData.data };
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.log('[AUTH] Login error:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+export async function logout() {
+  try {
+    console.log('[AUTH] Logout initiated');
+
+    // Get current session to invalidate refresh token
+    const session = getAuthSession();
+
+    // Try to invalidate refresh token on server
+    if (session?.refresh_token) {
+      try {
+        await fetch(`${DIRECTUS_URL}/auth/logout`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: session.refresh_token }),
+          cache: 'no-store',
+        });
+        console.log('[AUTH] Server logout successful');
+      } catch {
+        console.log('[AUTH] Server logout failed (continuing anyway)');
+      }
+    }
+
+    // NUCLEAR CLEAR
+    nuclearClear();
+    console.log('[AUTH] All auth state cleared');
+
+    return { success: true };
+  } catch (error: unknown) {
+    const err = error as Error;
+    // Even if logout fails, clear everything
+    nuclearClear();
+    return { success: false, error: err.message };
+  }
+}
+
+export async function getCurrentUser() {
+  try {
+    console.log('[AUTH] getCurrentUser called');
+
+    // Get session from storage
+    const session = getAuthSession();
+    if (!session?.access_token) {
+      console.log('[AUTH] No access token in storage');
+      return { success: false, error: 'No access token' };
+    }
+
+    console.log('[AUTH] Found session for user_id:', session.user_id);
+
+    // Make request with NO CACHE
+    const response = await fetch(`${DIRECTUS_URL}/users/me?fields=id,email,first_name,last_name,role.id,role.name,org_id,avatar,status`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+      },
+      cache: 'no-store',
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.log('[AUTH] /users/me failed:', errorData);
+      // Token is invalid, clear session
+      nuclearClear();
+      return { success: false, error: errorData.errors?.[0]?.message || 'Failed to get user' };
+    }
+
+    const data = await response.json();
+    console.log('[AUTH] getCurrentUser success:', data.data?.email, 'role:', data.data?.role?.name);
+
+    // CRITICAL: Verify the returned user matches the session
+    if (session.user_id && data.data?.id !== session.user_id) {
+      console.log('[AUTH] USER MISMATCH! Session user_id:', session.user_id, 'API returned:', data.data?.id);
+      // This should never happen, but if it does, clear everything
+      nuclearClear();
+      return { success: false, error: 'Session user mismatch' };
+    }
+
+    return { success: true, data: data.data };
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.log('[AUTH] getCurrentUser error:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+// ============================================================================
+// DIRECTUS SDK - For CRUD operations only (not auth)
+// ============================================================================
+
+// Storage adapter that reads from our auth session
 const storage = {
   get: () => {
-    if (typeof window !== 'undefined') {
-      const data = localStorage.getItem('directus-auth');
-      console.log('[AUTH DEBUG] storage.get() called, data exists:', !!data);
-      if (data) {
-        const parsed = JSON.parse(data);
-        console.log('[AUTH DEBUG] Token preview:', parsed.access_token?.substring(0, 30) + '...');
-        return parsed;
-      }
-      return null;
+    const session = getAuthSession();
+    if (session) {
+      return {
+        access_token: session.access_token,
+        refresh_token: session.refresh_token,
+        expires: session.expires,
+        expires_at: session.expires_at,
+      } as AuthenticationData;
     }
     return null;
   },
   set: (data: AuthenticationData | null) => {
-    if (typeof window !== 'undefined') {
-      console.log('[AUTH DEBUG] storage.set() called, data:', data ? 'setting token' : 'clearing token');
-      if (data) {
-        localStorage.setItem('directus-auth', JSON.stringify(data));
-        console.log('[AUTH DEBUG] Token stored successfully');
-      } else {
-        localStorage.removeItem('directus-auth');
-        console.log('[AUTH DEBUG] Token cleared');
-      }
-    }
+    // We manage auth separately, don't let SDK override
+    console.log('[SDK] storage.set called - ignoring, we manage auth separately');
   },
 };
 
-// Function to create a fresh Directus client
 function createDirectusClient() {
   return createDirectus<Schema>(DIRECTUS_URL)
     .with(authentication('json', { storage }))
     .with(rest());
 }
 
-// CRITICAL FIX: Use a getter pattern to always return the current client
-// This ensures that when we reset the client, ALL code gets the new instance
 let _directusClient = createDirectusClient();
 
-// Export getter function - ensures callers always get current client
 export function getDirectusClient() {
   return _directusClient;
 }
 
-// Legacy export for backward compatibility - but prefer getDirectusClient()
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const directus = new Proxy({} as ReturnType<typeof createDirectusClient>, {
   get(_, prop) {
@@ -496,153 +701,15 @@ export const directus = new Proxy({} as ReturnType<typeof createDirectusClient>,
   },
 });
 
-// Reset the client (creates a new instance)
 export function resetDirectusClient() {
-  console.log('[AUTH DEBUG] resetDirectusClient() - Creating fresh SDK instance');
+  console.log('[SDK] resetDirectusClient called');
   _directusClient = createDirectusClient();
 }
 
-// Helper functions
-export async function login(email: string, password: string) {
-  try {
-    console.log('[AUTH DEBUG] login() called for:', email);
-    // CRITICAL: Clear ALL existing auth state before login
-    storage.set(null);
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('directus-auth');
-      localStorage.removeItem('directus_token');
-      localStorage.removeItem('hospital-auth');
-    }
-    console.log('[AUTH DEBUG] Cleared existing auth state');
+// ============================================================================
+// CRUD FUNCTIONS
+// ============================================================================
 
-    // Make direct fetch call to avoid any SDK caching issues
-    const response = await fetch(`${DIRECTUS_URL}/auth/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email, password }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.log('[AUTH DEBUG] Login API failed:', errorData);
-      return { success: false, error: errorData.errors?.[0]?.message || 'Login failed' };
-    }
-
-    const data = await response.json();
-    console.log('[AUTH DEBUG] Login API success, got token');
-
-    // Store the auth data manually
-    if (data.data) {
-      storage.set({
-        access_token: data.data.access_token,
-        refresh_token: data.data.refresh_token,
-        expires: data.data.expires,
-        expires_at: Date.now() + data.data.expires,
-      });
-      console.log('[AUTH DEBUG] Token stored, verifying...');
-      // Verify it was stored
-      const verify = localStorage.getItem('directus-auth');
-      console.log('[AUTH DEBUG] Verify storage:', verify ? 'SUCCESS' : 'FAILED');
-    }
-
-    // Reset the client so it picks up the new token from storage
-    resetDirectusClient();
-
-    return { success: true, data: data.data };
-  } catch (error: unknown) {
-    const err = error as Error;
-    console.log('[AUTH DEBUG] login() error:', err.message);
-    return { success: false, error: err.message };
-  }
-}
-
-export async function logout() {
-  try {
-    // Get current refresh token to invalidate on server
-    const authData = storage.get();
-
-    // Try to invalidate refresh token on server
-    if (authData?.refresh_token) {
-      try {
-        await fetch(`${DIRECTUS_URL}/auth/logout`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ refresh_token: authData.refresh_token }),
-        });
-      } catch {
-        // Ignore logout errors
-      }
-    }
-
-    // CRITICAL: Clear ALL storage
-    storage.set(null);
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('directus-auth');
-      localStorage.removeItem('directus_token');
-      localStorage.removeItem('hospital-auth');
-      // Clear any other potential storage
-      localStorage.clear();
-      sessionStorage.clear();
-    }
-
-    // Reset the client
-    resetDirectusClient();
-
-    return { success: true };
-  } catch (error: unknown) {
-    const err = error as Error;
-    // Even if logout fails, clear everything
-    storage.set(null);
-    if (typeof window !== 'undefined') {
-      localStorage.clear();
-      sessionStorage.clear();
-    }
-    resetDirectusClient();
-    return { success: false, error: err.message };
-  }
-}
-
-export async function getCurrentUser() {
-  try {
-    console.log('[AUTH DEBUG] getCurrentUser() called');
-    // Get the token directly from storage to ensure we're using the latest
-    const authData = storage.get();
-    if (!authData?.access_token) {
-      console.log('[AUTH DEBUG] No access token found in storage');
-      return { success: false, error: 'No access token' };
-    }
-
-    console.log('[AUTH DEBUG] Making /users/me request with token');
-    // Use direct fetch to avoid any SDK caching issues
-    const response = await fetch(`${DIRECTUS_URL}/users/me?fields=id,email,first_name,last_name,role.id,role.name,org_id,avatar,status`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${authData.access_token}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.log('[AUTH DEBUG] /users/me failed:', errorData);
-      return { success: false, error: errorData.errors?.[0]?.message || 'Failed to get user' };
-    }
-
-    const data = await response.json();
-    console.log('[AUTH DEBUG] /users/me success, user email:', data.data?.email, 'role:', data.data?.role?.name);
-    return { success: true, data: data.data };
-  } catch (error: unknown) {
-    const err = error as Error;
-    console.log('[AUTH DEBUG] getCurrentUser error:', err.message);
-    return { success: false, error: err.message };
-  }
-}
-
-// Generic CRUD functions - use _directusClient directly to always get current instance
 export async function getItem<T>(collection: keyof Schema, id: string, options?: object) {
   try {
     const item = await _directusClient.request(readItem(collection, id, options as never));
@@ -693,10 +760,6 @@ export async function deleteItemRecord(collection: keyof Schema, id: string) {
   }
 }
 
-// Dedicated function for creating Directus users
-// Note: Directus 'role' field expects a UUID, not a string
-// The role field is set separately if needed
-// org_id is automatically set by Directus permission presets for Hospital Admin users
 export async function createDirectusUser(userData: {
   email: string;
   password: string;
@@ -709,7 +772,6 @@ export async function createDirectusUser(userData: {
   description?: string;
 }) {
   try {
-    // Build user data - org_id may be preset by Directus permissions
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const directusUserData: any = {
       email: userData.email,
@@ -719,12 +781,9 @@ export async function createDirectusUser(userData: {
       status: userData.status || 'active',
     };
 
-    // Add optional fields if provided
     if (userData.role) directusUserData.role = userData.role;
     if (userData.title) directusUserData.title = userData.title;
     if (userData.description) directusUserData.description = userData.description;
-    // org_id will be preset by Directus permissions for Hospital Admin,
-    // but we include it for SuperAdmin users who can set it explicitly
     if (userData.org_id) directusUserData.org_id = userData.org_id;
 
     const user = await _directusClient.request(createUser(directusUserData));
@@ -733,9 +792,9 @@ export async function createDirectusUser(userData: {
   } catch (error: unknown) {
     const err = error as Error;
     console.error('Create user error:', err);
-    // Try to extract more details from the error
     const errorMessage = (error as { errors?: Array<{ message: string }> })?.errors?.[0]?.message || err.message;
     return { success: false, error: errorMessage };
   }
 }
-// Build trigger: 1764535850 - CRITICAL FIX: SDK singleton Proxy pattern to ensure reset works properly
+
+// Build: 20251130-v3 - Complete auth rewrite with nuclear clear and session isolation
