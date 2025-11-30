@@ -238,4 +238,5 @@ export default function LoginPage() {
     </div>
   );
 }
-// Build trigger: 1764512469
+// Build version: 2.0.0 - Updated with 7 staff demo credentials
+// Last update: 2025-11-30T14:25:00Z

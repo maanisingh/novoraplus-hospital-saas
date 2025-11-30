@@ -21,6 +21,27 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Force revalidation of pages
+  experimental: {
+    staleTimes: {
+      dynamic: 0,
+      static: 0,
+    },
+  },
+  // Add cache-control headers
+  async headers() {
+    return [
+      {
+        source: '/login',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-store, must-revalidate',
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;
