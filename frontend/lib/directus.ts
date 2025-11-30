@@ -580,11 +580,28 @@ export async function logout() {
 
 export async function getCurrentUser() {
   try {
-    // Use 'role.*' or cast to fetch nested role data with id and name
-    const user = await directusClient.request(readMe({
-      fields: ['id', 'email', 'first_name', 'last_name', { role: ['id', 'name'] }, 'org_id', 'avatar', 'status'] as never
-    }));
-    return { success: true, data: user };
+    // Get the token directly from storage to ensure we're using the latest
+    const authData = storage.get();
+    if (!authData?.access_token) {
+      return { success: false, error: 'No access token' };
+    }
+
+    // Use direct fetch to avoid any SDK caching issues
+    const response = await fetch(`${DIRECTUS_URL}/users/me?fields=id,email,first_name,last_name,role.id,role.name,org_id,avatar,status`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${authData.access_token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      return { success: false, error: errorData.errors?.[0]?.message || 'Failed to get user' };
+    }
+
+    const data = await response.json();
+    return { success: true, data: data.data };
   } catch (error: unknown) {
     const err = error as Error;
     return { success: false, error: err.message };
@@ -687,4 +704,4 @@ export async function createDirectusUser(userData: {
     return { success: false, error: errorMessage };
   }
 }
-// Build trigger: 1764530800 - Direct fetch login, clear all storage on logout
+// Build trigger: 1764531500 - Direct fetch for BOTH login AND getCurrentUser to avoid SDK caching
