@@ -45,8 +45,9 @@ export const useAuthStore = create<AuthState>()((set) => ({
   logout: async () => {
     set({ isLoading: true });
     await logout();
-    // Clear any stored tokens
+    // Clear any stored tokens - must match the key used by Directus SDK storage
     if (typeof window !== 'undefined') {
+      localStorage.removeItem('directus-auth');
       localStorage.removeItem('directus_token');
       localStorage.removeItem('hospital-auth');
     }
