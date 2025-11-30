@@ -56,10 +56,17 @@ export const useAuthStore = create<AuthState>()((set) => ({
       localStorage.removeItem('directus-auth');
       localStorage.removeItem('directus_token');
       localStorage.removeItem('hospital-auth');
+      // Also clear all storage
+      localStorage.clear();
+      sessionStorage.clear();
     }
-    // This will redirect to /login with a full page refresh
-    // to reset the SDK singleton state
+    // Call logout to invalidate server-side token
     await logout();
+    // CRITICAL: Force a hard page reload to completely reset JS state
+    // This ensures the Directus SDK singleton is completely reset
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login';
+    }
   },
 
   checkAuth: async () => {

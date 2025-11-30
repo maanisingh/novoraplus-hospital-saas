@@ -70,8 +70,10 @@ export default function TopNavbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleLogout = async () => {
+    // Logout handles the redirect with a hard page reload
+    // This ensures the Directus SDK singleton is completely reset
     await logout();
-    router.push('/login');
+    // No router.push needed - logout does window.location.href = '/login'
   };
 
   const navItems = isSuperAdmin(user) ? superAdminNav : hospitalNav;
