@@ -481,14 +481,33 @@ export async function login(email: string, password: string) {
 
 export async function logout() {
   try {
-    await directus.logout();
-    // Also clear the storage manually to ensure clean state
+    // First try normal logout to invalidate refresh token on server
+    try {
+      await directus.logout();
+    } catch {
+      // Ignore logout errors - we'll clear everything anyway
+    }
+
+    // Clear storage
     storage.set(null);
+
+    // Force reload the page to fully reset SDK singleton state
+    // This is the most reliable way to clear all cached auth state
+    if (typeof window !== 'undefined') {
+      // Small delay to ensure storage is cleared before reload
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 100);
+    }
+
     return { success: true };
   } catch (error: unknown) {
     const err = error as Error;
-    // Even if logout fails, clear local storage
+    // Even if logout fails, clear local storage and redirect
     storage.set(null);
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login';
+    }
     return { success: false, error: err.message };
   }
 }
@@ -602,4 +621,4 @@ export async function createDirectusUser(userData: {
     return { success: false, error: errorMessage };
   }
 }
-// Build trigger: 1764529280
+// Build trigger: 1764530100 - Force page reload on logout to reset SDK singleton
