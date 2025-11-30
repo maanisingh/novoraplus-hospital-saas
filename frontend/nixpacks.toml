@@ -5,10 +5,7 @@ nixPkgs = ["nodejs_20"]
 cmds = ["npm ci"]
 
 [phases.build]
-cmds = ["npm run build"]
-
-[variables]
-NEXT_PUBLIC_DIRECTUS_URL = "https://directus-production-0b20.up.railway.app"
+cmds = ["NEXT_PUBLIC_DIRECTUS_URL=https://directus-production-0b20.up.railway.app npm run build"]
 
 [start]
 cmd = "npm run start"
