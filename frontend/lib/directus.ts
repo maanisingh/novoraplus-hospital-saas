@@ -619,14 +619,12 @@ export async function getCurrentUser() {
 
     console.log('[AUTH] Found session for user_id:', session.user_id);
 
-    // Make request with NO CACHE
+    // Make request with NO CACHE (using fetch cache option, not headers - CORS safe)
     const response = await fetch(`${DIRECTUS_URL}/users/me?fields=id,email,first_name,last_name,role.id,role.name,org_id,avatar,status`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${session.access_token}`,
         'Content-Type': 'application/json',
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
       },
       cache: 'no-store',
     });
