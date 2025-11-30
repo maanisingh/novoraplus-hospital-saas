@@ -486,13 +486,44 @@ export function resetDirectusClient() {
 // Helper functions
 export async function login(email: string, password: string) {
   try {
-    // Clear any existing auth state before login
+    // CRITICAL: Clear ALL existing auth state before login
     storage.set(null);
-    // Reset the client to ensure fresh state
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('directus-auth');
+      localStorage.removeItem('directus_token');
+      localStorage.removeItem('hospital-auth');
+    }
+
+    // Make direct fetch call to avoid any SDK caching issues
+    const response = await fetch(`${DIRECTUS_URL}/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      return { success: false, error: errorData.errors?.[0]?.message || 'Login failed' };
+    }
+
+    const data = await response.json();
+
+    // Store the auth data manually
+    if (data.data) {
+      storage.set({
+        access_token: data.data.access_token,
+        refresh_token: data.data.refresh_token,
+        expires: data.data.expires,
+        expires_at: Date.now() + data.data.expires,
+      });
+    }
+
+    // Reset the client so it picks up the new token from storage
     resetDirectusClient();
 
-    const result = await directusClient.login(email, password);
-    return { success: true, data: result };
+    return { success: true, data: data.data };
   } catch (error: unknown) {
     const err = error as Error;
     return { success: false, error: err.message };
@@ -501,24 +532,47 @@ export async function login(email: string, password: string) {
 
 export async function logout() {
   try {
-    // First try normal logout to invalidate refresh token on server
-    try {
-      await directusClient.logout();
-    } catch {
-      // Ignore logout errors - we'll clear everything anyway
+    // Get current refresh token to invalidate on server
+    const authData = storage.get();
+
+    // Try to invalidate refresh token on server
+    if (authData?.refresh_token) {
+      try {
+        await fetch(`${DIRECTUS_URL}/auth/logout`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ refresh_token: authData.refresh_token }),
+        });
+      } catch {
+        // Ignore logout errors
+      }
     }
 
-    // Clear storage
+    // CRITICAL: Clear ALL storage
     storage.set(null);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('directus-auth');
+      localStorage.removeItem('directus_token');
+      localStorage.removeItem('hospital-auth');
+      // Clear any other potential storage
+      localStorage.clear();
+      sessionStorage.clear();
+    }
 
-    // Reset the client to clear any cached auth state
+    // Reset the client
     resetDirectusClient();
 
     return { success: true };
   } catch (error: unknown) {
     const err = error as Error;
-    // Even if logout fails, clear local storage and reset client
+    // Even if logout fails, clear everything
     storage.set(null);
+    if (typeof window !== 'undefined') {
+      localStorage.clear();
+      sessionStorage.clear();
+    }
     resetDirectusClient();
     return { success: false, error: err.message };
   }
@@ -633,4 +687,4 @@ export async function createDirectusUser(userData: {
     return { success: false, error: errorMessage };
   }
 }
-// Build trigger: 1764530500 - Reset SDK client on login/logout to clear cached auth
+// Build trigger: 1764530800 - Direct fetch login, clear all storage on logout
