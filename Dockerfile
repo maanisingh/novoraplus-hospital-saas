@@ -1,9 +1,10 @@
 FROM node:20-alpine AS builder
 
+# Build v5.0.0 - 2025-11-30 - Staff demo credentials update
 WORKDIR /app
 
 COPY frontend/package*.json ./
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 
 COPY frontend/ .
 
