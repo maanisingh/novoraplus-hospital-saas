@@ -448,16 +448,25 @@ const storage = {
   get: () => {
     if (typeof window !== 'undefined') {
       const data = localStorage.getItem('directus-auth');
-      return data ? JSON.parse(data) : null;
+      console.log('[AUTH DEBUG] storage.get() called, data exists:', !!data);
+      if (data) {
+        const parsed = JSON.parse(data);
+        console.log('[AUTH DEBUG] Token preview:', parsed.access_token?.substring(0, 30) + '...');
+        return parsed;
+      }
+      return null;
     }
     return null;
   },
   set: (data: AuthenticationData | null) => {
     if (typeof window !== 'undefined') {
+      console.log('[AUTH DEBUG] storage.set() called, data:', data ? 'setting token' : 'clearing token');
       if (data) {
         localStorage.setItem('directus-auth', JSON.stringify(data));
+        console.log('[AUTH DEBUG] Token stored successfully');
       } else {
         localStorage.removeItem('directus-auth');
+        console.log('[AUTH DEBUG] Token cleared');
       }
     }
   },
@@ -486,6 +495,7 @@ export function resetDirectusClient() {
 // Helper functions
 export async function login(email: string, password: string) {
   try {
+    console.log('[AUTH DEBUG] login() called for:', email);
     // CRITICAL: Clear ALL existing auth state before login
     storage.set(null);
     if (typeof window !== 'undefined') {
@@ -493,6 +503,7 @@ export async function login(email: string, password: string) {
       localStorage.removeItem('directus_token');
       localStorage.removeItem('hospital-auth');
     }
+    console.log('[AUTH DEBUG] Cleared existing auth state');
 
     // Make direct fetch call to avoid any SDK caching issues
     const response = await fetch(`${DIRECTUS_URL}/auth/login`, {
@@ -505,10 +516,12 @@ export async function login(email: string, password: string) {
 
     if (!response.ok) {
       const errorData = await response.json();
+      console.log('[AUTH DEBUG] Login API failed:', errorData);
       return { success: false, error: errorData.errors?.[0]?.message || 'Login failed' };
     }
 
     const data = await response.json();
+    console.log('[AUTH DEBUG] Login API success, got token');
 
     // Store the auth data manually
     if (data.data) {
@@ -518,6 +531,10 @@ export async function login(email: string, password: string) {
         expires: data.data.expires,
         expires_at: Date.now() + data.data.expires,
       });
+      console.log('[AUTH DEBUG] Token stored, verifying...');
+      // Verify it was stored
+      const verify = localStorage.getItem('directus-auth');
+      console.log('[AUTH DEBUG] Verify storage:', verify ? 'SUCCESS' : 'FAILED');
     }
 
     // Reset the client so it picks up the new token from storage
@@ -526,6 +543,7 @@ export async function login(email: string, password: string) {
     return { success: true, data: data.data };
   } catch (error: unknown) {
     const err = error as Error;
+    console.log('[AUTH DEBUG] login() error:', err.message);
     return { success: false, error: err.message };
   }
 }
@@ -580,12 +598,15 @@ export async function logout() {
 
 export async function getCurrentUser() {
   try {
+    console.log('[AUTH DEBUG] getCurrentUser() called');
     // Get the token directly from storage to ensure we're using the latest
     const authData = storage.get();
     if (!authData?.access_token) {
+      console.log('[AUTH DEBUG] No access token found in storage');
       return { success: false, error: 'No access token' };
     }
 
+    console.log('[AUTH DEBUG] Making /users/me request with token');
     // Use direct fetch to avoid any SDK caching issues
     const response = await fetch(`${DIRECTUS_URL}/users/me?fields=id,email,first_name,last_name,role.id,role.name,org_id,avatar,status`, {
       method: 'GET',
@@ -597,13 +618,16 @@ export async function getCurrentUser() {
 
     if (!response.ok) {
       const errorData = await response.json();
+      console.log('[AUTH DEBUG] /users/me failed:', errorData);
       return { success: false, error: errorData.errors?.[0]?.message || 'Failed to get user' };
     }
 
     const data = await response.json();
+    console.log('[AUTH DEBUG] /users/me success, user email:', data.data?.email, 'role:', data.data?.role?.name);
     return { success: true, data: data.data };
   } catch (error: unknown) {
     const err = error as Error;
+    console.log('[AUTH DEBUG] getCurrentUser error:', err.message);
     return { success: false, error: err.message };
   }
 }
@@ -704,4 +728,4 @@ export async function createDirectusUser(userData: {
     return { success: false, error: errorMessage };
   }
 }
-// Build trigger: 1764531500 - Direct fetch for BOTH login AND getCurrentUser to avoid SDK caching
+// Build trigger: 1764534700 - Added console.log debugging to trace auth flow issue

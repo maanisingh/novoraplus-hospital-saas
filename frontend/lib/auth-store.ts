@@ -20,21 +20,26 @@ export const useAuthStore = create<AuthState>()((set) => ({
   error: null,
 
   login: async (email: string, password: string) => {
+    console.log('[AUTH STORE] login() called for:', email);
     set({ isLoading: true, error: null });
     const result = await login(email, password);
 
     if (result.success) {
+      console.log('[AUTH STORE] login() success, getting user...');
       const userResult = await getCurrentUser();
+      console.log('[AUTH STORE] getCurrentUser result:', userResult.success, userResult.data?.email);
       if (userResult.success && userResult.data) {
         set({
           user: userResult.data as DirectusUser,
           isAuthenticated: true,
           isLoading: false
         });
+        console.log('[AUTH STORE] User set in store:', userResult.data.email, 'role:', (userResult.data as DirectusUser).role);
         return true;
       }
     }
 
+    console.log('[AUTH STORE] login failed:', result.error);
     set({
       error: result.error || 'Login failed',
       isLoading: false
@@ -70,16 +75,19 @@ export const useAuthStore = create<AuthState>()((set) => ({
   },
 
   checkAuth: async () => {
+    console.log('[AUTH STORE] checkAuth() called');
     set({ isLoading: true });
     const result = await getCurrentUser();
 
     if (result.success && result.data) {
+      console.log('[AUTH STORE] checkAuth success, user:', result.data.email, 'role:', (result.data as DirectusUser).role);
       set({
         user: result.data as DirectusUser,
         isAuthenticated: true,
         isLoading: false
       });
     } else {
+      console.log('[AUTH STORE] checkAuth failed:', result.error);
       set({
         user: null,
         isAuthenticated: false,
