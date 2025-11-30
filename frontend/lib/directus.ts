@@ -491,8 +491,9 @@ export async function logout() {
 
 export async function getCurrentUser() {
   try {
+    // Use 'role.*' or cast to fetch nested role data with id and name
     const user = await directus.request(readMe({
-      fields: ['id', 'email', 'first_name', 'last_name', 'role', 'org_id', 'avatar', 'status']
+      fields: ['id', 'email', 'first_name', 'last_name', { role: ['id', 'name'] }, 'org_id', 'avatar', 'status'] as never
     }));
     return { success: true, data: user };
   } catch (error: unknown) {
