@@ -554,19 +554,23 @@ export async function deleteItemRecord(collection: keyof Schema, id: string) {
 
 // Dedicated function for creating Directus users
 // Note: Directus 'role' field expects a UUID, not a string
-// We don't set role here - users get the default public role
-// Custom staff roles should be stored in a separate custom field if needed
+// The role field is set separately if needed
+// org_id is automatically set by Directus permission presets for Hospital Admin users
 export async function createDirectusUser(userData: {
   email: string;
   password: string;
   first_name?: string;
   last_name?: string;
   org_id?: string;
+  role?: string;
   status?: string;
+  title?: string;
+  description?: string;
 }) {
   try {
-    // Only pass fields that Directus accepts
-    const directusUserData = {
+    // Build user data - org_id may be preset by Directus permissions
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const directusUserData: any = {
       email: userData.email,
       password: userData.password,
       first_name: userData.first_name,
@@ -574,18 +578,15 @@ export async function createDirectusUser(userData: {
       status: userData.status || 'active',
     };
 
-    const user = await directus.request(createUser(directusUserData));
+    // Add optional fields if provided
+    if (userData.role) directusUserData.role = userData.role;
+    if (userData.title) directusUserData.title = userData.title;
+    if (userData.description) directusUserData.description = userData.description;
+    // org_id will be preset by Directus permissions for Hospital Admin,
+    // but we include it for SuperAdmin users who can set it explicitly
+    if (userData.org_id) directusUserData.org_id = userData.org_id;
 
-    // If org_id is provided, update the user with org_id (custom field)
-    if (userData.org_id && user) {
-      try {
-        await directus.request(updateItem('directus_users', (user as { id: string }).id, {
-          org_id: userData.org_id,
-        } as never));
-      } catch (updateError) {
-        console.warn('Could not set org_id on user:', updateError);
-      }
-    }
+    const user = await directus.request(createUser(directusUserData));
 
     return { success: true, data: user };
   } catch (error: unknown) {
