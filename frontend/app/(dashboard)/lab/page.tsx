@@ -129,7 +129,7 @@ export default function LabPage() {
         test_date: new Date().toISOString(),
         status: 'pending',
         price: testInfo?.price || 0,
-        org_id: user?.org_id,
+        org_id: user?.org_id ?? undefined,
       };
 
       const result = await createItemRecord<LabTest>('lab_tests', testData);

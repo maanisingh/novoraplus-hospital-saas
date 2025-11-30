@@ -210,7 +210,7 @@ export default function UsersPage() {
     }
   };
 
-  const getOrgName = (orgId: string | undefined) => {
+  const getOrgName = (orgId: string | null | undefined) => {
     if (!orgId) return 'Platform Staff';
     const org = organizations.find(o => o.id === orgId);
     return org ? org.name : 'Unknown';

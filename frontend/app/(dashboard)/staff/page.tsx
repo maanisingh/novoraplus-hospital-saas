@@ -216,7 +216,7 @@ export default function StaffPage() {
           password: newStaff.password,
           first_name: newStaff.name.split(' ')[0],
           last_name: newStaff.name.split(' ').slice(1).join(' ') || '',
-          org_id: user?.org_id,
+          org_id: user?.org_id ?? undefined,
           status: 'active',
         });
 
@@ -243,7 +243,7 @@ export default function StaffPage() {
         address: newStaff.address || undefined,
         date_of_joining: newStaff.date_of_joining || undefined,
         status: newStaff.status,
-        org_id: user?.org_id,
+        org_id: user?.org_id ?? undefined,
         user_id: userId,
       };
 
@@ -354,7 +354,7 @@ export default function StaffPage() {
         password: password,
         first_name: staffMember.name.split(' ')[0],
         last_name: staffMember.name.split(' ').slice(1).join(' ') || '',
-        org_id: user?.org_id,
+        org_id: user?.org_id ?? undefined,
         status: 'active',
       });
 

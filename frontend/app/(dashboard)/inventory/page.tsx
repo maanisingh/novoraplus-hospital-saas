@@ -149,7 +149,7 @@ export default function InventoryPage() {
       const itemData: Partial<Inventory> = {
         ...formData,
         item_code: formData.item_code || generateItemCode(),
-        org_id: user?.org_id,
+        org_id: user?.org_id ?? undefined,
       };
 
       if (editingItem) {

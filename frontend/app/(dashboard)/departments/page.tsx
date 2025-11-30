@@ -91,7 +91,7 @@ export default function DepartmentsPage() {
         code: newDepartment.code || undefined,
         description: newDepartment.description || undefined,
         status: newDepartment.status,
-        org_id: user?.org_id,
+        org_id: user?.org_id ?? undefined,
       };
 
       const result = await createItemRecord<Department>('departments', departmentData);

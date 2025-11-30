@@ -154,7 +154,7 @@ export default function PharmacyPage() {
         total_amount: calculateTotal(),
         status: 'pending',
         order_date: new Date().toISOString(),
-        org_id: user?.org_id,
+        org_id: user?.org_id ?? undefined,
       };
 
       const result = await createItemRecord<PharmacyOrder>('pharmacy_orders', orderData);

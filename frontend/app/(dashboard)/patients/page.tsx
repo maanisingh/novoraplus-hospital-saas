@@ -109,7 +109,7 @@ export default function PatientsPage() {
         emergency_contact: newPatient.emergency_contact || undefined,
         emergency_contact_name: newPatient.emergency_contact_name || undefined,
         patient_code: generatePatientCode(),
-        org_id: user?.org_id,
+        org_id: user?.org_id ?? undefined,
       };
 
       const result = await createItemRecord<Patient>('patients', patientData);

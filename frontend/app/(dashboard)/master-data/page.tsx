@@ -200,7 +200,7 @@ export default function MasterDataPage() {
     const collection = getCollectionName(activeTab);
     const data = {
       ...formData,
-      org_id: user?.org_id,
+      org_id: user?.org_id ?? undefined,
       status: 'active',
     };
 

@@ -157,7 +157,7 @@ export default function RadiologyPage() {
         findings: newTest.findings || undefined,
         impression: newTest.impression || undefined,
         price: newTest.price ? parseFloat(newTest.price) : undefined,
-        org_id: user?.org_id,
+        org_id: user?.org_id ?? undefined,
       };
 
       const result = await createItemRecord<RadiologyTest>('radiology_tests', testData);

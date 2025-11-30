@@ -142,7 +142,7 @@ export default function BillingPage() {
         payment_status: 'paid',
         payment_method: paymentMethod,
         bill_date: new Date().toISOString(),
-        org_id: user?.org_id,
+        org_id: user?.org_id ?? undefined,
       };
 
       const result = await createItemRecord<Billing>('billing', billData);

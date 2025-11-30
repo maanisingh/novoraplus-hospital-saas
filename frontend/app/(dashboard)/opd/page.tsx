@@ -117,7 +117,7 @@ export default function OPDPage() {
         status: 'waiting',
         priority: priority as 'normal' | 'urgent' | 'emergency',
         symptoms: symptoms || undefined,
-        org_id: user?.org_id,
+        org_id: user?.org_id ?? undefined,
       };
 
       const result = await createItemRecord<OPDToken>('opd_tokens', tokenData);

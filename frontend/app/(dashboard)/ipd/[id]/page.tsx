@@ -130,7 +130,7 @@ export default function IPDDetailPage() {
         diet: newRecord.diet || undefined,
         nursing_notes: newRecord.nursing_notes || undefined,
         doctor_notes: newRecord.doctor_notes || undefined,
-        org_id: user?.org_id,
+        org_id: user?.org_id ?? undefined,
       };
 
       const result = await createItemRecord<IPDDailyRecord>('ipd_daily_records', recordData);

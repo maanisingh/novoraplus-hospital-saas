@@ -133,7 +133,7 @@ export default function IPDPage() {
         status: 'admitted',
         diagnosis: diagnosis || undefined,
         notes: notes || undefined,
-        org_id: user?.org_id,
+        org_id: user?.org_id ?? undefined,
       };
 
       const result = await createItemRecord<IPDAdmission>('ipd_admissions', admissionData);

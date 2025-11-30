@@ -107,7 +107,7 @@ export default function BedsPage() {
         bed_type: newBed.bed_type,
         status: newBed.status,
         daily_rate: newBed.daily_rate ? parseFloat(newBed.daily_rate) : undefined,
-        org_id: user?.org_id,
+        org_id: user?.org_id ?? undefined,
       };
 
       const result = await createItemRecord<Bed>('beds', bedData);
