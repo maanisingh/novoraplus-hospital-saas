@@ -1,9 +1,9 @@
 FROM node:20-alpine AS builder
 
 # ============================================
-# BUILD VERSION: 6.0.0
-# DATE: 2025-11-30T16:10:00Z
-# UPDATE: Staff demo credentials (7 users)
+# BUILD VERSION: 7.0.1
+# DATE: 2025-11-30T17:35:00Z
+# FIX: Force rebuild - frontend deployment
 # Doctor, Nurse, Receptionist, Lab Tech, Pharmacist
 # Hospital Admin, SuperAdmin
 # ============================================
