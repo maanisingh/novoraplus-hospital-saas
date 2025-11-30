@@ -482,9 +482,13 @@ export async function login(email: string, password: string) {
 export async function logout() {
   try {
     await directus.logout();
+    // Also clear the storage manually to ensure clean state
+    storage.set(null);
     return { success: true };
   } catch (error: unknown) {
     const err = error as Error;
+    // Even if logout fails, clear local storage
+    storage.set(null);
     return { success: false, error: err.message };
   }
 }
