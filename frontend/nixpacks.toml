@@ -2,10 +2,18 @@
 nixPkgs = ["nodejs_20"]
 
 [phases.install]
-cmds = ["npm ci"]
+cmds = ["npm ci --legacy-peer-deps"]
 
 [phases.build]
-cmds = ["NEXT_PUBLIC_DIRECTUS_URL=https://directus-production-0b20.up.railway.app npm run build"]
+# Force clean rebuild by clearing cache - v2.0.0
+cmds = [
+    "rm -rf .next",
+    "NEXT_PUBLIC_DIRECTUS_URL=https://directus-production-0b20.up.railway.app npm run build"
+]
 
 [start]
 cmd = "npm run start"
+
+[variables]
+NODE_ENV = "production"
+BUILD_VERSION = "2.0.0"
