@@ -15,17 +15,24 @@ import { toast } from 'sonner';
 const DEMO_CREDENTIALS = [
   {
     label: 'SuperAdmin',
-    email: 'superadmin@novoraplus.com',
-    password: 'NovoraPlus@2024',
-    description: 'Full access to manage hospitals',
+    email: 'admin@novoraplus.com',
+    password: 'NovoraPlus@2024!',
+    description: 'Full platform access - manage all hospitals',
     color: 'bg-purple-100 text-purple-700',
   },
   {
-    label: 'Hospital Admin',
-    email: 'hospitaladmin@novoraplus.com',
-    password: 'Hospital@2024',
-    description: 'Hospital dashboard access',
+    label: 'City General Hospital',
+    email: 'admin@citygeneralhospital.com',
+    password: 'Hospital@2024!',
+    description: 'Hospital Admin - City General Hospital',
     color: 'bg-blue-100 text-blue-700',
+  },
+  {
+    label: 'Sunrise Medical Center',
+    email: 'admin@sunrisemedical.com',
+    password: 'Hospital@2024!',
+    description: 'Hospital Admin - Sunrise Medical Center',
+    color: 'bg-green-100 text-green-700',
   },
 ];
 
