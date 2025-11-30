@@ -7,7 +7,7 @@ RUN npm ci
 
 COPY frontend/ .
 
-ARG NEXT_PUBLIC_DIRECTUS_URL
+ARG NEXT_PUBLIC_DIRECTUS_URL=https://directus-production-0b20.up.railway.app
 ENV NEXT_PUBLIC_DIRECTUS_URL=$NEXT_PUBLIC_DIRECTUS_URL
 
 RUN npm run build
