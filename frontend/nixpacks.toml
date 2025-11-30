@@ -16,6 +16,6 @@ cmd = "npm run start"
 
 [variables]
 NODE_ENV = "production"
-BUILD_VERSION = "3.0.0"
-BUILD_TIMESTAMP = "2025-11-30T14:35:00Z"
-CACHE_BUST = "force-rebuild-staff-credentials"
+BUILD_VERSION = "4.0.0"
+BUILD_TIMESTAMP = "2025-11-30T15:00:00Z"
+CACHE_BUST = "force-rebuild-rbac-fix-v4"
