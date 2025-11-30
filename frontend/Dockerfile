@@ -1,9 +1,10 @@
 FROM node:20-alpine AS builder
 
+# Cache bust: v5.0.0 - 2025-11-30T16:00:00Z - Staff credentials update
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 
 COPY . .
 
