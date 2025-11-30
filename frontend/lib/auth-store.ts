@@ -13,9 +13,10 @@ interface AuthState {
 }
 
 // No persist - always verify with server on page load
+// CRITICAL: isLoading starts as TRUE to prevent premature redirect before checkAuth completes
 export const useAuthStore = create<AuthState>()((set) => ({
   user: null,
-  isLoading: false,
+  isLoading: true,  // Start as true to prevent redirect race condition
   isAuthenticated: false,
   error: null,
 
