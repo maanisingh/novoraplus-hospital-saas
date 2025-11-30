@@ -463,15 +463,35 @@ const storage = {
   },
 };
 
-// Create Directus client with localStorage persistence
-export const directus = createDirectus<Schema>(DIRECTUS_URL)
-  .with(authentication('json', { storage }))
-  .with(rest());
+// Function to create a fresh Directus client
+function createDirectusClient() {
+  return createDirectus<Schema>(DIRECTUS_URL)
+    .with(authentication('json', { storage }))
+    .with(rest());
+}
+
+// Mutable client that can be reset
+let directusClient = createDirectusClient();
+
+// Export getter for the client
+export const directus = directusClient;
+
+// Reset the client (creates a new instance)
+export function resetDirectusClient() {
+  directusClient = createDirectusClient();
+  // Update the exported reference
+  Object.assign(directus, directusClient);
+}
 
 // Helper functions
 export async function login(email: string, password: string) {
   try {
-    const result = await directus.login(email, password);
+    // Clear any existing auth state before login
+    storage.set(null);
+    // Reset the client to ensure fresh state
+    resetDirectusClient();
+
+    const result = await directusClient.login(email, password);
     return { success: true, data: result };
   } catch (error: unknown) {
     const err = error as Error;
@@ -483,7 +503,7 @@ export async function logout() {
   try {
     // First try normal logout to invalidate refresh token on server
     try {
-      await directus.logout();
+      await directusClient.logout();
     } catch {
       // Ignore logout errors - we'll clear everything anyway
     }
@@ -491,23 +511,15 @@ export async function logout() {
     // Clear storage
     storage.set(null);
 
-    // Force reload the page to fully reset SDK singleton state
-    // This is the most reliable way to clear all cached auth state
-    if (typeof window !== 'undefined') {
-      // Small delay to ensure storage is cleared before reload
-      setTimeout(() => {
-        window.location.href = '/login';
-      }, 100);
-    }
+    // Reset the client to clear any cached auth state
+    resetDirectusClient();
 
     return { success: true };
   } catch (error: unknown) {
     const err = error as Error;
-    // Even if logout fails, clear local storage and redirect
+    // Even if logout fails, clear local storage and reset client
     storage.set(null);
-    if (typeof window !== 'undefined') {
-      window.location.href = '/login';
-    }
+    resetDirectusClient();
     return { success: false, error: err.message };
   }
 }
@@ -515,7 +527,7 @@ export async function logout() {
 export async function getCurrentUser() {
   try {
     // Use 'role.*' or cast to fetch nested role data with id and name
-    const user = await directus.request(readMe({
+    const user = await directusClient.request(readMe({
       fields: ['id', 'email', 'first_name', 'last_name', { role: ['id', 'name'] }, 'org_id', 'avatar', 'status'] as never
     }));
     return { success: true, data: user };
@@ -528,7 +540,7 @@ export async function getCurrentUser() {
 // Generic CRUD functions
 export async function getItem<T>(collection: keyof Schema, id: string, options?: object) {
   try {
-    const item = await directus.request(readItem(collection, id, options as never));
+    const item = await directusClient.request(readItem(collection, id, options as never));
     return { success: true, data: item as T };
   } catch (error: unknown) {
     const err = error as Error;
@@ -538,7 +550,7 @@ export async function getItem<T>(collection: keyof Schema, id: string, options?:
 
 export async function getItems<T>(collection: keyof Schema, options?: object) {
   try {
-    const items = await directus.request(readItems(collection, options as never));
+    const items = await directusClient.request(readItems(collection, options as never));
     return { success: true, data: items as T[] };
   } catch (error: unknown) {
     const err = error as Error;
@@ -548,7 +560,7 @@ export async function getItems<T>(collection: keyof Schema, options?: object) {
 
 export async function createItemRecord<T>(collection: keyof Schema, data: Partial<T>) {
   try {
-    const item = await directus.request(createItem(collection, data as never));
+    const item = await directusClient.request(createItem(collection, data as never));
     return { success: true, data: item as T };
   } catch (error: unknown) {
     const err = error as Error;
@@ -558,7 +570,7 @@ export async function createItemRecord<T>(collection: keyof Schema, data: Partia
 
 export async function updateItemRecord<T>(collection: keyof Schema, id: string, data: Partial<T>) {
   try {
-    const item = await directus.request(updateItem(collection, id, data as never));
+    const item = await directusClient.request(updateItem(collection, id, data as never));
     return { success: true, data: item as T };
   } catch (error: unknown) {
     const err = error as Error;
@@ -568,7 +580,7 @@ export async function updateItemRecord<T>(collection: keyof Schema, id: string, 
 
 export async function deleteItemRecord(collection: keyof Schema, id: string) {
   try {
-    await directus.request(deleteItem(collection, id));
+    await directusClient.request(deleteItem(collection, id));
     return { success: true };
   } catch (error: unknown) {
     const err = error as Error;
@@ -610,7 +622,7 @@ export async function createDirectusUser(userData: {
     // but we include it for SuperAdmin users who can set it explicitly
     if (userData.org_id) directusUserData.org_id = userData.org_id;
 
-    const user = await directus.request(createUser(directusUserData));
+    const user = await directusClient.request(createUser(directusUserData));
 
     return { success: true, data: user };
   } catch (error: unknown) {
@@ -621,4 +633,4 @@ export async function createDirectusUser(userData: {
     return { success: false, error: errorMessage };
   }
 }
-// Build trigger: 1764530100 - Force page reload on logout to reset SDK singleton
+// Build trigger: 1764530500 - Reset SDK client on login/logout to clear cached auth
