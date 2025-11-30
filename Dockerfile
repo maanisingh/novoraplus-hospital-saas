@@ -1,9 +1,10 @@
 FROM node:20-alpine AS builder
 
 # ============================================
-# BUILD VERSION: 9.0.0
-# DATE: 2025-11-30T18:10:00Z
-# Unified Dockerfile for all services
+# BUILD VERSION: 10.0.0
+# DATE: 2025-11-30T19:00:00Z
+# RBAC: Staff page now restricted to Hospital Admin and SuperAdmin only
+# Nurses and other staff can only VIEW staff, not manage them
 # ============================================
 
 WORKDIR /app

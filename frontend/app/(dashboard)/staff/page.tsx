@@ -41,7 +41,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { getItems, createItemRecord, updateItemRecord, deleteItemRecord, createDirectusUser, Staff, Department } from '@/lib/directus';
-import { useAuthStore } from '@/lib/auth-store';
+import { useAuthStore, isSuperAdmin, isHospitalAdmin } from '@/lib/auth-store';
 import {
   Plus,
   Search,
@@ -104,6 +104,10 @@ interface ExtendedStaff extends Staff {
 
 export default function StaffPage() {
   const { user } = useAuthStore();
+
+  // RBAC: Only Hospital Admin and SuperAdmin can manage staff
+  const canManageStaff = isSuperAdmin(user) || isHospitalAdmin(user);
+
   const [staff, setStaff] = useState<ExtendedStaff[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -454,16 +458,22 @@ export default function StaffPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Staff Management</h1>
-          <p className="text-gray-600 mt-1">Manage hospital staff, doctors, and their login accounts</p>
+          <p className="text-gray-600 mt-1">
+            {canManageStaff
+              ? 'Manage hospital staff, doctors, and their login accounts'
+              : 'View hospital staff and doctors'}
+          </p>
         </div>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              Add Staff
-            </Button>
-          </DialogTrigger>
+          {canManageStaff && (
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Staff
+              </Button>
+            </DialogTrigger>
+          )}
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Add New Staff Member</DialogTitle>
@@ -806,14 +816,16 @@ export default function StaffPage() {
             <div className="text-center py-8 text-gray-500">
               <UserCog className="w-12 h-12 mx-auto mb-2 text-gray-300" />
               <p>No staff members found</p>
-              <Button
-                variant="outline"
-                className="mt-4"
-                onClick={() => setIsDialogOpen(true)}
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Add First Staff Member
-              </Button>
+              {canManageStaff && (
+                <Button
+                  variant="outline"
+                  className="mt-4"
+                  onClick={() => setIsDialogOpen(true)}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add First Staff Member
+                </Button>
+              )}
             </div>
           ) : (
             <Table>
@@ -826,7 +838,7 @@ export default function StaffPage() {
                   <TableHead>Contact</TableHead>
                   <TableHead>Login</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  {canManageStaff && <TableHead className="text-right">Actions</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -886,35 +898,37 @@ export default function StaffPage() {
                       )}
                     </TableCell>
                     <TableCell>{getStatusBadge(staffMember.status)}</TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <MoreHorizontal className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openEditDialog(staffMember)}>
-                            <Edit className="w-4 h-4 mr-2" />
-                            Edit Details
-                          </DropdownMenuItem>
-                          {!staffMember.has_login && staffMember.email && (
-                            <DropdownMenuItem onClick={() => handleCreateLoginForStaff(staffMember)}>
-                              <UserPlus className="w-4 h-4 mr-2" />
-                              Create Login Account
+                    {canManageStaff && (
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => openEditDialog(staffMember)}>
+                              <Edit className="w-4 h-4 mr-2" />
+                              Edit Details
                             </DropdownMenuItem>
-                          )}
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => handleDeleteStaff(staffMember)}
-                            className="text-red-600"
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Delete Staff
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+                            {!staffMember.has_login && staffMember.email && (
+                              <DropdownMenuItem onClick={() => handleCreateLoginForStaff(staffMember)}>
+                                <UserPlus className="w-4 h-4 mr-2" />
+                                Create Login Account
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => handleDeleteStaff(staffMember)}
+                              className="text-red-600"
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Delete Staff
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
