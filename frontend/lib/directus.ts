@@ -479,17 +479,27 @@ function createDirectusClient() {
     .with(rest());
 }
 
-// Mutable client that can be reset
-let directusClient = createDirectusClient();
+// CRITICAL FIX: Use a getter pattern to always return the current client
+// This ensures that when we reset the client, ALL code gets the new instance
+let _directusClient = createDirectusClient();
 
-// Export getter for the client
-export const directus = directusClient;
+// Export getter function - ensures callers always get current client
+export function getDirectusClient() {
+  return _directusClient;
+}
+
+// Legacy export for backward compatibility - but prefer getDirectusClient()
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const directus = new Proxy({} as ReturnType<typeof createDirectusClient>, {
+  get(_, prop) {
+    return (_directusClient as unknown as Record<string | symbol, unknown>)[prop];
+  },
+});
 
 // Reset the client (creates a new instance)
 export function resetDirectusClient() {
-  directusClient = createDirectusClient();
-  // Update the exported reference
-  Object.assign(directus, directusClient);
+  console.log('[AUTH DEBUG] resetDirectusClient() - Creating fresh SDK instance');
+  _directusClient = createDirectusClient();
 }
 
 // Helper functions
@@ -632,10 +642,10 @@ export async function getCurrentUser() {
   }
 }
 
-// Generic CRUD functions
+// Generic CRUD functions - use _directusClient directly to always get current instance
 export async function getItem<T>(collection: keyof Schema, id: string, options?: object) {
   try {
-    const item = await directusClient.request(readItem(collection, id, options as never));
+    const item = await _directusClient.request(readItem(collection, id, options as never));
     return { success: true, data: item as T };
   } catch (error: unknown) {
     const err = error as Error;
@@ -645,7 +655,7 @@ export async function getItem<T>(collection: keyof Schema, id: string, options?:
 
 export async function getItems<T>(collection: keyof Schema, options?: object) {
   try {
-    const items = await directusClient.request(readItems(collection, options as never));
+    const items = await _directusClient.request(readItems(collection, options as never));
     return { success: true, data: items as T[] };
   } catch (error: unknown) {
     const err = error as Error;
@@ -655,7 +665,7 @@ export async function getItems<T>(collection: keyof Schema, options?: object) {
 
 export async function createItemRecord<T>(collection: keyof Schema, data: Partial<T>) {
   try {
-    const item = await directusClient.request(createItem(collection, data as never));
+    const item = await _directusClient.request(createItem(collection, data as never));
     return { success: true, data: item as T };
   } catch (error: unknown) {
     const err = error as Error;
@@ -665,7 +675,7 @@ export async function createItemRecord<T>(collection: keyof Schema, data: Partia
 
 export async function updateItemRecord<T>(collection: keyof Schema, id: string, data: Partial<T>) {
   try {
-    const item = await directusClient.request(updateItem(collection, id, data as never));
+    const item = await _directusClient.request(updateItem(collection, id, data as never));
     return { success: true, data: item as T };
   } catch (error: unknown) {
     const err = error as Error;
@@ -675,7 +685,7 @@ export async function updateItemRecord<T>(collection: keyof Schema, id: string, 
 
 export async function deleteItemRecord(collection: keyof Schema, id: string) {
   try {
-    await directusClient.request(deleteItem(collection, id));
+    await _directusClient.request(deleteItem(collection, id));
     return { success: true };
   } catch (error: unknown) {
     const err = error as Error;
@@ -717,7 +727,7 @@ export async function createDirectusUser(userData: {
     // but we include it for SuperAdmin users who can set it explicitly
     if (userData.org_id) directusUserData.org_id = userData.org_id;
 
-    const user = await directusClient.request(createUser(directusUserData));
+    const user = await _directusClient.request(createUser(directusUserData));
 
     return { success: true, data: user };
   } catch (error: unknown) {
@@ -728,4 +738,4 @@ export async function createDirectusUser(userData: {
     return { success: false, error: errorMessage };
   }
 }
-// Build trigger: 1764534700 - Added console.log debugging to trace auth flow issue
+// Build trigger: 1764535850 - CRITICAL FIX: SDK singleton Proxy pattern to ensure reset works properly
