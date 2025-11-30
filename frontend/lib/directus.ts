@@ -257,8 +257,8 @@ export interface DirectusUser {
   last_name?: string;
   email: string;
   password?: string;
-  role: string;
-  org_id?: string;
+  role: string | { id: string; name: string };
+  org_id?: string | null;
   status: string;
   avatar?: string;
 }

@@ -84,8 +84,10 @@ export const useAuthStore = create<AuthState>()((set) => ({
 export function getUserRole(user: DirectusUser | null): string {
   if (!user?.role) return 'unknown';
 
-  // The role field contains the role ID or name
-  // You may need to adjust this based on Directus response
+  // The role field contains the role object with name
+  if (typeof user.role === 'object' && user.role?.name) {
+    return user.role.name;
+  }
   return typeof user.role === 'string' ? user.role : 'unknown';
 }
 
@@ -93,4 +95,19 @@ export function getUserRole(user: DirectusUser | null): string {
 export function isSuperAdmin(user: DirectusUser | null): boolean {
   // Super admin has no org_id
   return user !== null && !user.org_id;
+}
+
+// Check if user is hospital admin
+export function isHospitalAdmin(user: DirectusUser | null): boolean {
+  if (!user) return false;
+  const roleName = getUserRole(user);
+  return roleName === 'Hospital Admin' && user.org_id !== null;
+}
+
+// Check if user is staff (Doctor, Nurse, Receptionist, Lab Tech, Pharmacist)
+export function isStaff(user: DirectusUser | null): boolean {
+  if (!user) return false;
+  const roleName = getUserRole(user);
+  const staffRoles = ['Doctor', 'Nurse', 'Receptionist', 'Lab Technician', 'Pharmacist'];
+  return staffRoles.includes(roleName) && user.org_id !== null;
 }
