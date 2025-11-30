@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAuthStore, isSuperAdmin } from '@/lib/auth-store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -65,7 +64,6 @@ const DEMO_CREDENTIALS = [
 ];
 
 export default function LoginPage() {
-  const router = useRouter();
   const { login, isLoading, error, clearError } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -78,10 +76,14 @@ export default function LoginPage() {
     const success = await login(email, password);
     if (success) {
       const { user } = useAuthStore.getState();
-      if (isSuperAdmin(user)) {
-        router.push('/superadmin');
-      } else {
-        router.push('/dashboard');
+      // CRITICAL: Use hard page reload instead of router.push
+      // This ensures ALL JavaScript state is reset for the new session
+      if (typeof window !== 'undefined') {
+        if (isSuperAdmin(user)) {
+          window.location.href = '/superadmin';
+        } else {
+          window.location.href = '/dashboard';
+        }
       }
     }
   };
@@ -94,10 +96,14 @@ export default function LoginPage() {
     const success = await login(cred.email, cred.password);
     if (success) {
       const { user } = useAuthStore.getState();
-      if (isSuperAdmin(user)) {
-        router.push('/superadmin');
-      } else {
-        router.push('/dashboard');
+      // CRITICAL: Use hard page reload instead of router.push
+      // This ensures ALL JavaScript state is reset for the new session
+      if (typeof window !== 'undefined') {
+        if (isSuperAdmin(user)) {
+          window.location.href = '/superadmin';
+        } else {
+          window.location.href = '/dashboard';
+        }
       }
     }
   };
@@ -238,5 +244,6 @@ export default function LoginPage() {
     </div>
   );
 }
-// Build version: 2.0.0 - Updated with 7 staff demo credentials
-// Last update: 2025-11-30T14:25:00Z
+// Build version: 2.1.0 - CRITICAL FIX: Use window.location.href for login redirect instead of router.push
+// This ensures complete JS state reset between different user logins
+// Last update: 2025-11-30T21:00:00Z
