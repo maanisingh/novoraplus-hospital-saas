@@ -64,27 +64,37 @@ const DEMO_CREDENTIALS = [
 ];
 
 export default function LoginPage() {
-  const { login, isLoading, error, clearError } = useAuthStore();
+  const { login, error, clearError } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  // Use LOCAL loading state for login page - the global isLoading defaults to true
+  // which would block the form. Local state ensures form is enabled on page load.
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     clearError();
+    setIsSubmitting(true);
 
-    const success = await login(email, password);
-    if (success) {
-      const { user } = useAuthStore.getState();
-      // CRITICAL: Use hard page reload instead of router.push
-      // This ensures ALL JavaScript state is reset for the new session
-      if (typeof window !== 'undefined') {
-        if (isSuperAdmin(user)) {
-          window.location.href = '/superadmin';
-        } else {
-          window.location.href = '/dashboard';
+    try {
+      const success = await login(email, password);
+      if (success) {
+        const { user } = useAuthStore.getState();
+        // CRITICAL: Use hard page reload instead of router.push
+        // This ensures ALL JavaScript state is reset for the new session
+        if (typeof window !== 'undefined') {
+          if (isSuperAdmin(user)) {
+            window.location.href = '/superadmin';
+          } else {
+            window.location.href = '/dashboard';
+          }
         }
+      } else {
+        setIsSubmitting(false);
       }
+    } catch {
+      setIsSubmitting(false);
     }
   };
 
@@ -92,19 +102,26 @@ export default function LoginPage() {
     setEmail(cred.email);
     setPassword(cred.password);
     clearError();
+    setIsSubmitting(true);
 
-    const success = await login(cred.email, cred.password);
-    if (success) {
-      const { user } = useAuthStore.getState();
-      // CRITICAL: Use hard page reload instead of router.push
-      // This ensures ALL JavaScript state is reset for the new session
-      if (typeof window !== 'undefined') {
-        if (isSuperAdmin(user)) {
-          window.location.href = '/superadmin';
-        } else {
-          window.location.href = '/dashboard';
+    try {
+      const success = await login(cred.email, cred.password);
+      if (success) {
+        const { user } = useAuthStore.getState();
+        // CRITICAL: Use hard page reload instead of router.push
+        // This ensures ALL JavaScript state is reset for the new session
+        if (typeof window !== 'undefined') {
+          if (isSuperAdmin(user)) {
+            window.location.href = '/superadmin';
+          } else {
+            window.location.href = '/dashboard';
+          }
         }
+      } else {
+        setIsSubmitting(false);
       }
+    } catch {
+      setIsSubmitting(false);
     }
   };
 
@@ -143,7 +160,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                disabled={isLoading}
+                disabled={isSubmitting}
               />
             </div>
             <div className="space-y-2">
@@ -155,7 +172,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                disabled={isLoading}
+                disabled={isSubmitting}
               />
             </div>
 
@@ -165,8 +182,8 @@ export default function LoginPage() {
               </div>
             )}
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? (
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Signing in...
@@ -221,9 +238,9 @@ export default function LoginPage() {
                     size="sm"
                     className="w-full mt-3"
                     onClick={() => handleQuickLogin(cred)}
-                    disabled={isLoading}
+                    disabled={isSubmitting}
                   >
-                    {isLoading ? (
+                    {isSubmitting ? (
                       <Loader2 className="w-3 h-3 animate-spin mr-2" />
                     ) : null}
                     Login as {cred.label}
@@ -244,6 +261,8 @@ export default function LoginPage() {
     </div>
   );
 }
-// Build version: 2.1.0 - CRITICAL FIX: Use window.location.href for login redirect instead of router.push
-// This ensures complete JS state reset between different user logins
-// Last update: 2025-11-30T21:00:00Z
+// Build version: 2.2.0 - CRITICAL FIX: Use local isSubmitting state instead of global isLoading
+// The global isLoading defaults to true (to prevent race conditions on protected pages),
+// but this caused the login form to be disabled forever. Local state fixes this.
+// Also uses window.location.href for login redirect to ensure complete JS state reset.
+// Last update: 2025-11-30T22:30:00Z
