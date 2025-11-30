@@ -91,10 +91,12 @@ export function getUserRole(user: DirectusUser | null): string {
   return typeof user.role === 'string' ? user.role : 'unknown';
 }
 
-// Check if user is super admin
+// Check if user is super admin - must check role name, not just org_id
 export function isSuperAdmin(user: DirectusUser | null): boolean {
-  // Super admin has no org_id
-  return user !== null && !user.org_id;
+  if (!user) return false;
+  const roleName = getUserRole(user);
+  // Only SuperAdmin role should see superadmin dashboard
+  return roleName === 'SuperAdmin' || roleName === 'Administrator';
 }
 
 // Check if user is hospital admin
