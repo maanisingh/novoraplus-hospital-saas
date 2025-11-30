@@ -441,7 +441,7 @@ interface Schema {
   user_types: UserType[];
 }
 
-const DIRECTUS_URL = process.env.NEXT_PUBLIC_DIRECTUS_URL || 'http://localhost:8060';
+const DIRECTUS_URL = process.env.NEXT_PUBLIC_DIRECTUS_URL || 'https://directus-production-0b20.up.railway.app';
 
 // Storage for auth tokens (browser-side)
 const storage = {
