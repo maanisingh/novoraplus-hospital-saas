@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Explicitly define public runtime environment variables
+  env: {
+    NEXT_PUBLIC_URL: process.env.NEXT_PUBLIC_URL || 'https://hospital-backend-production-c6bd.up.railway.app',
+    NEXT_PUBLIC_DIRECTUS_URL: process.env.NEXT_PUBLIC_URL || process.env.NEXT_PUBLIC_DIRECTUS_URL || 'https://hospital-backend-production-c6bd.up.railway.app',
+  },
   images: {
     remotePatterns: [
       {
