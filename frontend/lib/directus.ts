@@ -9,10 +9,32 @@ export interface Organization {
   address?: string;
   city?: string;
   state?: string;
+  pincode?: string;
   phone?: string;
   email?: string;
+  helpline_number?: string;
   owner_name?: string;
+  owner_email?: string;
   owner_mobile?: string;
+  // Social Media
+  facebook_url?: string;
+  instagram_url?: string;
+  youtube_url?: string;
+  twitter_url?: string;
+  linkedin_url?: string;
+  dashboard_footer_text?: string;
+  // Subscription & Modules
+  modules?: string[];
+  subscription_start_date?: string;
+  subscription_end_date?: string;
+  subscription_status?: string;
+  payment_status?: string;
+  // Theme Colors
+  theme_primary_color?: string;
+  theme_secondary_color?: string;
+  header_color?: string;
+  footer_color?: string;
+  // Legacy fields
   razorpay_account_id?: string;
   whatsapp_number?: string;
   subscription_plan?: 'basic' | 'professional' | 'enterprise';
@@ -409,6 +431,98 @@ export interface UserType {
   date_created: string;
 }
 
+// SuperAdmin Interfaces
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  description?: string;
+  price: number;
+  billing_cycle: 'monthly' | 'quarterly' | 'yearly';
+  max_users?: number;
+  max_patients?: number;
+  modules: string[];
+  features?: string[];
+  is_popular?: boolean;
+  status: 'active' | 'inactive';
+  date_created: string;
+}
+
+export interface SuperAdminSettings {
+  id: string;
+  // Basic Settings
+  site_title?: string;
+  site_tagline?: string;
+  support_email?: string;
+  support_phone?: string;
+  // Landing Page CMS
+  landing_hero_title?: string;
+  landing_hero_subtitle?: string;
+  landing_features?: object;
+  landing_testimonials?: object;
+  landing_pricing_enabled?: boolean;
+  // WhatsApp & SMS Gateway
+  whatsapp_api_url?: string;
+  whatsapp_api_key?: string;
+  whatsapp_number?: string;
+  sms_provider?: 'twilio' | 'msg91' | 'custom';
+  sms_api_key?: string;
+  sms_sender_id?: string;
+  // Payment Gateway
+  payment_gateway?: 'razorpay' | 'stripe' | 'paypal';
+  razorpay_key_id?: string;
+  razorpay_key_secret?: string;
+  stripe_public_key?: string;
+  stripe_secret_key?: string;
+  // Other
+  date_created: string;
+  date_updated?: string;
+}
+
+export interface Promotion {
+  id: string;
+  title: string;
+  description?: string;
+  discount_type: 'percentage' | 'fixed';
+  discount_value: number;
+  valid_from: string;
+  valid_until: string;
+  applicable_plans?: string[];
+  promo_code?: string;
+  max_uses?: number;
+  used_count?: number;
+  status: 'active' | 'inactive' | 'expired';
+  date_created: string;
+}
+
+export interface SurgicalHistory {
+  id: string;
+  org_id: string;
+  patient_id: string;
+  surgery_name: string;
+  surgery_date: string;
+  surgeon_name?: string;
+  hospital_name?: string;
+  notes?: string;
+  complications?: string;
+  date_created: string;
+}
+
+export interface PaymentHistory {
+  id: string;
+  org_id: string;
+  payment_date: string;
+  amount: number;
+  payment_method?: 'razorpay' | 'stripe' | 'bank_transfer' | 'cash';
+  payment_status: 'success' | 'failed' | 'pending' | 'refunded';
+  transaction_id?: string;
+  subscription_plan?: string;
+  billing_period_start?: string;
+  billing_period_end?: string;
+  invoice_number?: string;
+  notes?: string;
+  date_created: string;
+}
+
 // Schema type for Directus SDK
 interface Schema {
   organizations: Organization[];
@@ -439,9 +553,15 @@ interface Schema {
   lab_report_templates: LabReportTemplate[];
   payment_modes: PaymentMode[];
   user_types: UserType[];
+  // SuperAdmin Collections
+  subscription_plans: SubscriptionPlan[];
+  superadmin_settings: SuperAdminSettings[];
+  promotions: Promotion[];
+  surgical_history: SurgicalHistory[];
+  payment_history: PaymentHistory[];
 }
 
-const DIRECTUS_URL = process.env.NEXT_PUBLIC_DIRECTUS_URL || 'https://directus-production-0b20.up.railway.app';
+const DIRECTUS_URL = process.env.NEXT_PUBLIC_URL || process.env.NEXT_PUBLIC_DIRECTUS_URL || 'https://hospital-backend-production-c6bd.up.railway.app';
 
 // ============================================================================
 // BULLETPROOF AUTH SYSTEM - No SDK caching, pure fetch-based
