@@ -16,7 +16,8 @@ export type Role =
   | 'MedicalRecords'
   | 'InventoryManager'
   | 'Dietitian'
-  | 'Physiotherapist';
+  | 'Physiotherapist'
+  | 'Patient';
 
 // Route permissions - defines which roles can access which routes
 export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
