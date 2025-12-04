@@ -10,7 +10,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Plus, Edit, Trash2, Star } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -289,10 +288,12 @@ export default function SubscriptionPlansPage() {
                 <div className="grid grid-cols-2 gap-3 mt-2 p-4 border rounded-lg">
                   {AVAILABLE_MODULES.map((module) => (
                     <div key={module.value} className="flex items-center space-x-2">
-                      <Checkbox
+                      <input
+                        type="checkbox"
                         id={module.value}
                         checked={formData.modules.includes(module.value)}
-                        onCheckedChange={() => handleModuleToggle(module.value)}
+                        onChange={() => handleModuleToggle(module.value)}
+                        className="h-4 w-4 rounded border-gray-300"
                       />
                       <label htmlFor={module.value} className="text-sm cursor-pointer">
                         {module.label}
@@ -345,10 +346,12 @@ export default function SubscriptionPlansPage() {
                 </div>
                 <div className="flex items-end">
                   <div className="flex items-center space-x-2">
-                    <Checkbox
+                    <input
+                      type="checkbox"
                       id="isPopular"
                       checked={formData.isPopular}
-                      onCheckedChange={(checked) => setFormData({ ...formData, isPopular: checked as boolean })}
+                      onChange={(e) => setFormData({ ...formData, isPopular: e.target.checked })}
+                      className="h-4 w-4 rounded border-gray-300"
                     />
                     <label htmlFor="isPopular" className="text-sm cursor-pointer">
                       Mark as Popular Plan
