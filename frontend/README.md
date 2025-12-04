@@ -35,3 +35,4 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 # Force rebuild Wed Dec  3 09:55:40 PM UTC 2025
+# Force Railway redeploy Thu Dec  4 12:20:43 PM UTC 2025
