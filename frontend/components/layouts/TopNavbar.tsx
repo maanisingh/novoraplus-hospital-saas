@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { useAuthStore, isSuperAdmin } from '@/lib/auth-store';
+import { useAuthStore, isSuperAdmin, getUserRole } from '@/lib/auth-store';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -33,6 +33,12 @@ import {
   ChevronDown,
   ScanLine,
   Database,
+  Calendar,
+  FileText,
+  DollarSign,
+  UserPlus,
+  Thermometer,
+  Camera,
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useState } from 'react';
@@ -44,7 +50,7 @@ const superAdminNav = [
   { name: 'Settings', href: '/superadmin/settings', icon: Settings },
 ];
 
-const hospitalNav = [
+const hospitalAdminNav = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Patients', href: '/patients', icon: Users },
   { name: 'OPD', href: '/opd', icon: Stethoscope },
@@ -54,6 +60,99 @@ const hospitalNav = [
   { name: 'Pharmacy', href: '/pharmacy', icon: Pill },
   { name: 'Inventory', href: '/inventory', icon: Package },
   { name: 'Billing', href: '/billing', icon: Receipt },
+];
+
+const doctorNav = [
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'OPD Queue', href: '/opd', icon: Stethoscope },
+  { name: 'My Patients', href: '/patients', icon: Users },
+  { name: 'IPD Rounds', href: '/ipd', icon: Bed },
+  { name: 'Lab Orders', href: '/lab', icon: FlaskConical },
+  { name: 'Radiology', href: '/radiology', icon: ScanLine },
+  { name: 'Prescriptions', href: '/pharmacy', icon: Pill },
+];
+
+const nurseNav = [
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'IPD Patients', href: '/ipd', icon: Bed },
+  { name: 'Vitals', href: '/ipd', icon: Thermometer },
+  { name: 'Medications', href: '/pharmacy', icon: Pill },
+  { name: 'Patient Records', href: '/patients', icon: Users },
+  { name: 'Lab Tests', href: '/lab', icon: FlaskConical },
+];
+
+const receptionistNav = [
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Patients', href: '/patients', icon: Users },
+  { name: 'OPD Queue', href: '/opd', icon: Calendar },
+  { name: 'Appointments', href: '/opd', icon: Stethoscope },
+  { name: 'Billing', href: '/billing', icon: Receipt },
+];
+
+const labTechnicianNav = [
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Lab Tests', href: '/lab', icon: FlaskConical },
+  { name: 'Test Results', href: '/lab', icon: FileText },
+  { name: 'Patients', href: '/patients', icon: Users },
+];
+
+const pharmacistNav = [
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Prescriptions', href: '/pharmacy', icon: Pill },
+  { name: 'Inventory', href: '/inventory', icon: Package },
+  { name: 'Medicine Stock', href: '/inventory', icon: Database },
+  { name: 'Billing', href: '/billing', icon: DollarSign },
+];
+
+const radiologyTechnicianNav = [
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Radiology', href: '/radiology', icon: ScanLine },
+  { name: 'Scans Queue', href: '/radiology', icon: Camera },
+  { name: 'Reports', href: '/radiology', icon: FileText },
+  { name: 'Patients', href: '/patients', icon: Users },
+];
+
+const billingNav = [
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Billing', href: '/billing', icon: Receipt },
+  { name: 'Invoices', href: '/billing', icon: FileText },
+  { name: 'Patients', href: '/patients', icon: Users },
+];
+
+const accountantNav = [
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Billing', href: '/billing', icon: Receipt },
+  { name: 'Reports', href: '/billing', icon: FileText },
+];
+
+const hrManagerNav = [
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Staff', href: '/staff', icon: UserCog },
+  { name: 'Departments', href: '/departments', icon: FolderKanban },
+];
+
+const medicalRecordsNav = [
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Patients', href: '/patients', icon: Users },
+  { name: 'Records', href: '/patients', icon: FileText },
+];
+
+const inventoryManagerNav = [
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Inventory', href: '/inventory', icon: Package },
+  { name: 'Pharmacy', href: '/pharmacy', icon: Pill },
+];
+
+const dietitianNav = [
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'IPD Patients', href: '/ipd', icon: Bed },
+  { name: 'Patients', href: '/patients', icon: Users },
+];
+
+const physiotherapistNav = [
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'IPD Patients', href: '/ipd', icon: Bed },
+  { name: 'Patients', href: '/patients', icon: Users },
 ];
 
 const settingsNav = [
@@ -70,13 +169,62 @@ export default function TopNavbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleLogout = async () => {
-    // Logout handles the redirect with a hard page reload
-    // This ensures the Directus SDK singleton is completely reset
     await logout();
-    // No router.push needed - logout does window.location.href = '/login'
   };
 
-  const navItems = isSuperAdmin(user) ? superAdminNav : hospitalNav;
+  // Determine navigation items based on user role
+  const getNavItems = () => {
+    if (!user) return [];
+
+    const role = getUserRole(user);
+
+    switch (role) {
+      case 'SuperAdmin':
+      case 'Administrator':
+        return superAdminNav;
+      case 'Hospital Admin':
+      case 'HospitalAdmin':
+        return hospitalAdminNav;
+      case 'Doctor':
+        return doctorNav;
+      case 'Nurse':
+        return nurseNav;
+      case 'Receptionist':
+        return receptionistNav;
+      case 'Lab Technician':
+      case 'LabTechnician':
+        return labTechnicianNav;
+      case 'Pharmacist':
+        return pharmacistNav;
+      case 'Radiology Technician':
+      case 'RadiologyTechnician':
+      case 'Radiologist':
+        return radiologyTechnicianNav;
+      case 'Billing':
+        return billingNav;
+      case 'Accountant':
+        return accountantNav;
+      case 'HR Manager':
+      case 'HRManager':
+        return hrManagerNav;
+      case 'Medical Records':
+      case 'MedicalRecords':
+        return medicalRecordsNav;
+      case 'Inventory Manager':
+      case 'InventoryManager':
+        return inventoryManagerNav;
+      case 'Dietitian':
+        return dietitianNav;
+      case 'Physiotherapist':
+        return physiotherapistNav;
+      default:
+        return hospitalAdminNav; // fallback
+    }
+  };
+
+  const navItems = getNavItems();
+  const userRole = getUserRole(user);
+  const showSettings = !isSuperAdmin(user) && (userRole === 'Hospital Admin' || userRole === 'HospitalAdmin');
 
   const isActive = (href: string) => {
     if (href === '/dashboard' || href === '/superadmin') {
@@ -121,8 +269,8 @@ export default function TopNavbar() {
                 );
               })}
 
-              {/* Settings Dropdown for Hospital Users */}
-              {!isSuperAdmin(user) && (
+              {/* Settings Dropdown for Hospital Admin Only */}
+              {showSettings && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button
@@ -175,6 +323,7 @@ export default function TopNavbar() {
                       {user?.first_name} {user?.last_name}
                     </p>
                     <p className="text-xs text-gray-500">{user?.email}</p>
+                    <p className="text-xs text-blue-600 font-medium">{getUserRole(user)}</p>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
@@ -184,12 +333,14 @@ export default function TopNavbar() {
                     Profile
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/settings" className="cursor-pointer">
-                    <Settings className="mr-2 h-4 w-4" />
-                    Settings
-                  </Link>
-                </DropdownMenuItem>
+                {showSettings && (
+                  <DropdownMenuItem asChild>
+                    <Link href="/settings" className="cursor-pointer">
+                      <Settings className="mr-2 h-4 w-4" />
+                      Settings
+                    </Link>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="text-red-600 cursor-pointer">
                   <LogOut className="mr-2 h-4 w-4" />
@@ -226,8 +377,8 @@ export default function TopNavbar() {
                     );
                   })}
 
-                  {/* Settings Section for Hospital Users */}
-                  {!isSuperAdmin(user) && (
+                  {/* Settings Section for Hospital Admin Only */}
+                  {showSettings && (
                     <>
                       <div className="border-t border-gray-200 my-2 pt-2">
                         <p className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase">
